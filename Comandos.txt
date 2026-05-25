@@ -1,0 +1,7 @@
+Comandos para limpiar y construir desde 0:
+    docker compose down -v
+    docker compose up --build
+
+Comandos para mantener datos:
+    docker compose down
+    docker compose up -d

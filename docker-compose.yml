@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  couchdb:
+    image: couchdb:3.3
+    container_name: couchdb_lab
+    restart: always
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=admin123
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+
+  backend:
+    build: ./backend
+    container_name: backend_lab
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - couchdb
+    environment:
+      - COUCHDB_URL=http://admin:admin123@couchdb:5984
+    volumes:
+      - ./backend/logs:/app/logs
+
+  couchdb-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - couchdb
+    volumes:
+      - ./init/init.sh:/init.sh
+    entrypoint: ["sh", "/init.sh"]
+
+volumes:
+  couchdb_data:
