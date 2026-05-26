@@ -18,7 +18,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/LoginRequest"
               }
             }
           }
@@ -41,7 +41,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ProductSelector"
               }
             }
           }
@@ -71,7 +71,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/LoginRequest"
               },
               "examples": {
                 "validLogin": {
@@ -105,7 +105,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/AccountLookupRequest"
               },
               "example": {
                 "username": "juan"
@@ -128,7 +128,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ProductSelector"
               },
               "example": {
                 "category": "computers",
@@ -155,7 +155,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CatalogSearchRequest"
               },
               "example": {
                 "category": "computers",
@@ -182,7 +182,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ProductSelector"
               },
               "example": {
                 "category": "computers",
@@ -206,7 +206,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/RiskReviewRequest"
               },
               "example": {
                 "path": "/orders/search",
@@ -232,7 +232,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/RiskReviewRequest"
               },
               "example": {
                 "source": "partner-api",
@@ -259,7 +259,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/OrderSelector"
               },
               "example": {
                 "status": "paid"
@@ -313,7 +313,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CatalogSearchRequest"
               },
               "example": {
                 "category": "computers",
@@ -331,6 +331,160 @@
     }
   },
   "components": {
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "juan"
+          },
+          "password": {
+            "type": "string",
+            "example": "123456"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountLookupRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "juan"
+          },
+          "email": {
+            "type": "string",
+            "example": "juan@test.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "user"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ProductSelector": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Laptop Gamer"
+          },
+          "category": {
+            "type": "string",
+            "example": "computers"
+          },
+          "featured": {
+            "type": "boolean",
+            "example": true
+          },
+          "price": {
+            "type": "number",
+            "example": 1500
+          },
+          "stock": {
+            "type": "integer",
+            "example": 5
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "category": "computers"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "CatalogSearchRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Laptop Gamer"
+          },
+          "category": {
+            "type": "string",
+            "example": "computers"
+          },
+          "featured": {
+            "type": "boolean",
+            "example": true
+          },
+          "maxPrice": {
+            "type": "number",
+            "example": 1000
+          }
+        },
+        "additionalProperties": false
+      },
+      "RiskReviewRequest": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/orders/search"
+          },
+          "source": {
+            "type": "string",
+            "example": "partner-api"
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "status": "paid"
+            }
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "category": "computers"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "OrderSelector": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "juan"
+          },
+          "status": {
+            "type": "string",
+            "example": "paid"
+          },
+          "total": {
+            "type": "number",
+            "example": 1620
+          },
+          "shippingCity": {
+            "type": "string",
+            "example": "Quito"
+          },
+          "paymentLast4": {
+            "type": "string",
+            "example": "1111"
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "status": "paid"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
