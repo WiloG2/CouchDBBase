@@ -9,6 +9,7 @@ const swaggerDocument = require("./swagger.json");
 
 const app = express();
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("combined"));
 
 app.use((req, res, next) => {
@@ -44,83 +45,6 @@ function generateToken(user) {
   );
 }
 
-/* Middleware de verificación */
-function verifyToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-
-  if (!authHeader) {
-    return res.status(403).json({ error: "Token requerido" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: "Token inválido" });
-  }
-}
-
-/* Middleware de rol admin */
-function requireAdmin(req, res, next) {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ error: "Permisos insuficientes" });
-  }
-  next();
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getMangoOperators(value, operators = []) {
-  if (Array.isArray(value)) {
-    value.forEach((item) => getMangoOperators(item, operators));
-    return operators;
-  }
-
-  if (value && typeof value === "object") {
-    Object.keys(value).forEach((key) => {
-      if (key.startsWith("$")) {
-        operators.push(key);
-      }
-      getMangoOperators(value[key], operators);
-    });
-  }
-
-  return operators;
-}
-
-function assessSelectorRisk(selector) {
-  const operators = [...new Set(getMangoOperators(selector))];
-  const highRiskOperators = ["$ne", "$or", "$regex", "$gt", "$gte", "$lt", "$lte", "$exists"];
-  const riskyOperators = operators.filter((operator) => highRiskOperators.includes(operator));
-
-  if (riskyOperators.length > 0) {
-    return {
-      risk: "high",
-      operators,
-      reason: "Selector contiene operadores Mango controlados por el usuario"
-    };
-  }
-
-  if (operators.length > 0) {
-    return {
-      risk: "medium",
-      operators,
-      reason: "Selector contiene operadores Mango no esperados para busqueda publica"
-    };
-  }
-
-  return {
-    risk: "low",
-    operators,
-    reason: "No se detectaron operadores Mango en el cuerpo recibido"
-  };
-}
-
 function buildSafeProductSelector(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return {};
@@ -147,89 +71,66 @@ function buildSafeProductSelector(body) {
   return selector;
 }
 
-function normalizeSelector(body) {
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    return body.selector && typeof body.selector === "object" ? body.selector : body;
-  }
+const findOptions = [
+  "selector",
+  "limit",
+  "skip",
+  "sort",
+  "fields",
+  "use_index",
+  "allow_fallback",
+  "bookmark",
+  "r",
+  "conflicts",
+  "execution_stats",
+  "update",
+  "stable"
+];
 
-  return {};
+function isFindRequest(body) {
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      findOptions.some((option) => Object.prototype.hasOwnProperty.call(body, option))
+  );
 }
 
-/* Login principal */
-app.post("/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    /* Validación mínima */
-    if (!username || !password) {
-      return res.status(400).json({
-        error: "username y password requeridos"
-      });
-    }
-
-    const result = await usersDb.find({
-      selector: {
-        username: username,
-        password: password
-      }
-    });
-
-    if (result.docs.length > 0) {
-      const user = result.docs[0];
-      const token = generateToken(user);
-
-      return res.json({
-        success: true,
-        token,
-        user: {
-          username: user.username,
-          role: user.role
-        }
-      });
-    }
-
-    res.status(401).json({ success: false });
-
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({ error: err.message });
+function buildFindRequest(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { selector: {} };
   }
-});
 
-
-/* Busqueda flexible de productos */
-app.post("/products/search", async (req, res) => {
-  try {
-    const result = await productsDb.find({
-      selector: req.body
-    });
-
-    res.json(result.docs);
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({ error: err.message });
+  if (isFindRequest(body)) {
+    return body;
   }
-});
 
-/* Login alterno usado por el flujo de autenticacion del front */
+  return { selector: body };
+}
+
+/* Login de clientes */
 app.post("/auth/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const findRequest = isFindRequest(req.body)
+      ? buildFindRequest(req.body)
+      : {
+          selector: {
+            username: req.body.username,
+            password: req.body.password
+          }
+        };
 
-    const result = await usersDb.find({
-      selector: {
-        username,
-        password
-      }
-    });
+    const result = await usersDb.find(findRequest);
+    const user = result.docs[0];
 
     res.json({
       success: result.docs.length > 0,
       matched: result.docs.length,
-      user: result.docs[0]
+      token: user ? generateToken(user) : null,
+      user: user
         ? {
-            username: result.docs[0].username,
-            role: result.docs[0].role
+            username: user.username,
+            role: user.role
           }
         : null
     });
@@ -239,11 +140,22 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
+/* Busqueda flexible de productos para pruebas de NoSQL injection */
+app.post("/products/search", async (req, res) => {
+  try {
+    const result = await productsDb.find(buildFindRequest(req.body));
+
+    res.json(result.docs);
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* Verifica si una cuenta coincide con los datos del flujo de recuperacion */
 app.post("/account/recovery/lookup", async (req, res) => {
   try {
-    const selector = normalizeSelector(req.body);
-    const result = await usersDb.find({ selector, limit: 1 });
+    const result = await usersDb.find(buildFindRequest(req.body));
 
     res.json({
       accountFound: result.docs.length > 0
@@ -251,23 +163,6 @@ app.post("/account/recovery/lookup", async (req, res) => {
   } catch (err) {
     logger.error(err);
     res.status(500).json({ error: err.message });
-  }
-});
-
-/* Reporte interno de inventario con filtros flexibles */
-app.post("/reports/products", async (req, res) => {
-  try {
-    const selector = normalizeSelector(req.body);
-    const result = await productsDb.find({ selector });
-
-    res.json(result.docs);
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({
-      error: err.message,
-      name: err.name,
-      statusCode: err.statusCode
-    });
   }
 });
 
@@ -284,104 +179,16 @@ app.post("/catalog/search", async (req, res) => {
   }
 });
 
-/* Busqueda avanzada usada por analistas de inventario */
-app.post("/catalog/advanced-search", async (req, res) => {
-  const startedAt = Date.now();
-
-  try {
-    const selector = normalizeSelector(req.body);
-    const result = await productsDb.find({ selector });
-    const elapsedMs = Date.now() - startedAt;
-
-    res.json({
-      metadata: {
-        queryMs: elapsedMs
-      },
-      count: result.docs.length,
-      docs: result.docs
-    });
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({
-      elapsedMs: Date.now() - startedAt,
-      error: err.message
-    });
-  }
-});
-
-/* Evaluacion interna de riesgo para solicitudes con filtros dinamicos */
-app.post("/security/request-risk", async (req, res) => {
-  const startedAt = Date.now();
-  const assessment = assessSelectorRisk(req.body);
-  const suspicious = assessment.risk === "high";
-
-  if (suspicious) {
-    await sleep(1500);
-  }
-
-  res.json({
-    suspicious,
-    elapsedMs: Date.now() - startedAt,
-    assessment
-  });
-});
-
-/* Clasificacion de filtros recibidos por integraciones internas */
-app.post("/security/filter-review", (req, res) => {
-  res.json(assessSelectorRisk(req.body));
-});
-
 /* Consulta de ordenes con filtros para soporte */
 app.post("/orders/search", async (req, res) => {
   try {
-    const selector = normalizeSelector(req.body);
-    const result = await ordersDb.find({ selector });
+    const result = await ordersDb.find(buildFindRequest(req.body));
 
     res.json(result.docs);
   } catch (err) {
     logger.error(err);
     res.status(500).json({ error: err.message });
   }
-});
-
-/* Listado administrativo heredado */
-app.get("/admin/staff-directory", async (req, res) => {
-  const result = await usersDb.find({
-    selector: { role: { "$ne": "user" } }
-  });
-
-  res.json(result.docs);
-});
-
-/* Listado administrativo protegido */
-app.get("/admin/staff", verifyToken, requireAdmin, async (req, res) => {
-  const result = await usersDb.find({
-    selector: { role: { "$ne": "user" } }
-  });
-
-  res.json(result.docs);
-});
-
-/* Busqueda de productos para el front principal */
-app.post("/products/catalog", async (req, res) => {
-  try {
-    const selector = buildSafeProductSelector(req.body);
-    const result = await productsDb.find({ selector });
-
-    res.json(result.docs);
-  } catch (err) {
-    logger.error(err);
-    res.status(400).json({ error: "Consulta invalida" });
-  }
-});
-
-/* ADMIN ENDPOINT MAL PROTEGIDO */
-app.get("/admin/users", async (req, res) => {
-  const result = await usersDb.find({
-    selector: { role: { "$ne": "user" } }
-  });
-
-  res.json(result.docs);
 });
 
 app.listen(3000, () => {

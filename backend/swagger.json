@@ -10,62 +10,9 @@
     }
   ],
   "paths": {
-    "/login": {
-      "post": {
-        "summary": "User login",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      }
-    },
-    "/products/search": {
-      "post": {
-        "summary": "Search products",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProductSelector"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Products list"
-          }
-        }
-      }
-    },
-    "/admin/users": {
-      "get": {
-        "summary": "Get admin users",
-        "responses": {
-          "200": {
-            "description": "List users"
-          }
-        }
-      }
-    },
     "/auth/login": {
       "post": {
-        "summary": "Alternate customer login",
+        "summary": "Customer login",
         "requestBody": {
           "required": true,
           "content": {
@@ -87,12 +34,43 @@
                   }
                 }
               }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
             }
           }
         },
         "responses": {
           "200": {
             "description": "Login result"
+          }
+        }
+      }
+    },
+    "/products/search": {
+      "post": {
+        "summary": "Flexible product search",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductSelector"
+              },
+              "example": {
+                "selector": {
+                  "category": "computers"
+                },
+                "limit": 10
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product matches"
           }
         }
       }
@@ -116,33 +94,6 @@
         "responses": {
           "200": {
             "description": "Account lookup result"
-          }
-        }
-      }
-    },
-    "/reports/products": {
-      "post": {
-        "summary": "Internal product inventory report",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProductSelector"
-              },
-              "example": {
-                "category": "computers",
-                "featured": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Product matches"
-          },
-          "500": {
-            "description": "Report generation error"
           }
         }
       }
@@ -174,83 +125,6 @@
         }
       }
     },
-    "/catalog/advanced-search": {
-      "post": {
-        "summary": "Advanced catalog search for inventory analysts",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProductSelector"
-              },
-              "example": {
-                "category": "computers",
-                "maxPrice": 1000
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Products and query metadata"
-          }
-        }
-      }
-    },
-    "/security/request-risk": {
-      "post": {
-        "summary": "Request risk evaluation",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RiskReviewRequest"
-              },
-              "example": {
-                "path": "/orders/search",
-                "filters": {
-                  "status": "paid"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Suspicion flag and elapsed time"
-          }
-        }
-      }
-    },
-    "/security/filter-review": {
-      "post": {
-        "summary": "Review dynamic filters submitted by integrations",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RiskReviewRequest"
-              },
-              "example": {
-                "source": "partner-api",
-                "filters": {
-                  "category": "computers",
-                  "featured": true
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Risk assessment"
-          }
-        }
-      }
-    },
     "/orders/search": {
       "post": {
         "summary": "Support order search",
@@ -273,82 +147,68 @@
           }
         }
       }
-    },
-    "/admin/staff-directory": {
-      "get": {
-        "summary": "Legacy staff directory",
-        "responses": {
-          "200": {
-            "description": "List privileged users"
-          }
-        }
-      }
-    },
-    "/admin/staff": {
-      "get": {
-        "summary": "Protected staff directory",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List privileged users"
-          },
-          "401": {
-            "description": "Invalid token"
-          },
-          "403": {
-            "description": "Missing token or insufficient permissions"
-          }
-        }
-      }
-    },
-    "/products/catalog": {
-      "post": {
-        "summary": "Frontend product catalog search",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CatalogSearchRequest"
-              },
-              "example": {
-                "category": "computers",
-                "maxPrice": 1000
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Product matches"
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
       "LoginRequest": {
         "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
         "properties": {
           "username": {
-            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": true
+              }
+            ],
             "example": "juan"
           },
           "password": {
-            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": true
+              }
+            ],
             "example": "123456"
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "username": "admin",
+              "password": {
+                "$ne": null
+              }
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "example": 1
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "_id",
+              "username",
+              "role"
+            ]
+          },
+          "execution_stats": {
+            "type": "boolean",
+            "example": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountLookupRequest": {
         "type": "object",
@@ -364,6 +224,33 @@
           "role": {
             "type": "string",
             "example": "user"
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "username": {
+                "$exists": true
+              }
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "example": 1
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "_id",
+              "username"
+            ]
+          },
+          "execution_stats": {
+            "type": "boolean",
+            "example": true
           }
         },
         "additionalProperties": true
@@ -397,6 +284,59 @@
             "example": {
               "category": "computers"
             }
+          },
+          "limit": {
+            "type": "integer",
+            "example": 10
+          },
+          "skip": {
+            "type": "integer",
+            "example": 0
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "_id",
+              "name",
+              "price"
+            ]
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "example": [
+              {
+                "price": "asc"
+              }
+            ]
+          },
+          "execution_stats": {
+            "type": "boolean",
+            "example": true
+          },
+          "conflicts": {
+            "type": "boolean",
+            "example": true
+          },
+          "use_index": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "_design/idx_category",
+              "idx_category"
+            ]
+          },
+          "allow_fallback": {
+            "type": "boolean",
+            "example": false
           }
         },
         "additionalProperties": true
@@ -422,34 +362,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "RiskReviewRequest": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "example": "/orders/search"
-          },
-          "source": {
-            "type": "string",
-            "example": "partner-api"
-          },
-          "filters": {
-            "type": "object",
-            "additionalProperties": true,
-            "example": {
-              "status": "paid"
-            }
-          },
-          "selector": {
-            "type": "object",
-            "additionalProperties": true,
-            "example": {
-              "category": "computers"
-            }
-          }
-        },
-        "additionalProperties": true
       },
       "OrderSelector": {
         "type": "object",
@@ -480,16 +392,44 @@
             "example": {
               "status": "paid"
             }
+          },
+          "limit": {
+            "type": "integer",
+            "example": 10
+          },
+          "skip": {
+            "type": "integer",
+            "example": 0
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "_id",
+              "status",
+              "total"
+            ]
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "example": [
+              {
+                "createdAt": "desc"
+              }
+            ]
+          },
+          "execution_stats": {
+            "type": "boolean",
+            "example": true
           }
         },
         "additionalProperties": true
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
       }
     }
   }
